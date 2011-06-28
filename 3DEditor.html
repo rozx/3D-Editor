@@ -1,0 +1,269 @@
+<html>
+	<head>
+		<title>3D Cube Editor</title>
+		
+		<script src="./Engine/Three.js"></script>
+		<script src="./Engine/RequestAnimationFrame.js"></script>
+
+		
+		</head>
+	<body style="background-color:black" align="center">
+<script>
+	
+		var counterX = 0, counterY=0 ,mouseDown = false;
+		var radious = 500;
+		var MouseCube,projector;
+		var ray, caremamove;
+		
+    init();
+    animate();
+    
+    function Users(){
+  	
+  		this.oldX = undefined;
+  		this.oldY = undefined;
+  		
+  		this.save = function (x,y){
+  			this.oldX = x;
+  			this.oldY = y;
+  		}
+  	}
+  	
+  	var me = new Users();
+    
+
+    function init() {
+
+        camera = new THREE.Camera( 75, window.innerWidth / window.innerHeight, 1, 10000 );
+        camera.position.x = 200;
+        camera.position.y = 200;
+        camera.position.z = 200;
+
+        scene = new THREE.Scene();
+        projector = new THREE.Projector();
+        ray = new THREE.Ray( camera.position, null );
+         
+				// Grid
+ 
+				var geometry = new THREE.Geometry();
+				geometry.vertices.push( new THREE.Vertex( new THREE.Vector3( - 500, 0, 0 ) ) );
+				geometry.vertices.push( new THREE.Vertex( new THREE.Vector3( 500, 0, 0 ) ) );
+ 
+				for ( var i = 0; i <= 20; i ++ ) {
+ 
+					var line = new THREE.Line( geometry, new THREE.LineBasicMaterial( { color: 0xffffff, opacity: 0.2 } ) );
+					line.position.z = ( i * 50 ) - 500;
+					scene.addObject( line );
+ 
+					var line = new THREE.Line( geometry, new THREE.LineBasicMaterial( { color: 0xffffff, opacity: 0.2 } ) );
+					line.position.x = ( i * 50 ) - 500;
+					line.rotation.y = 90 * Math.PI / 180;
+					scene.addObject( line );
+ 
+				}
+				
+				
+				var material = new THREE.MeshDepthMaterial({ opacity: 0 });
+				
+				for (var i = 0 ; i < 20; i ++){
+ 
+ 					for(var i2 = 0; i2< 20; i2 ++){
+						var plane = new THREE.Mesh( new THREE.CubeGeometry( 50, 50, 0 ),material );
+						plane.rotation.x =  - 90 * Math.PI / 180;
+						plane.position.x =-475 + (i * 50);
+						plane.position.y = 0;
+						plane.position.z = -475 + (i2 * 50);
+						plane.name = "plane";
+						plane.visible = false;
+						scene.addObject( plane );
+					}
+				
+				}
+				
+				
+				// cube
+				
+				var geometry = new THREE.CubeGeometry( 50, 50, 50 );
+				var material = new THREE.MeshLambertMaterial( { color: 0xffffff,wireframe: false ,shading: THREE.FlatShading} );
+ 
+				for ( var i = 0; i < 1; i ++ ) {
+ 
+					var cube = new THREE.Mesh( geometry, material );
+					cube.overdraw = true;
+ 
+					cube.scale.y = Math.floor( Math.random() * 2 + 1 );
+ 
+					cube.position.x = Math.floor( ( Math.random() * 1000 - 500 ) / 50 ) * 50 + 25;
+					cube.position.y = ( cube.scale.y * 50 ) / 2;
+					cube.position.z = Math.floor( ( Math.random() * 1000 - 500 ) / 50 ) * 50 + 25;
+					
+					//cube.position.x = -475 + (i * 50) ;
+					//cube.position.y = ( cube.scale.y * 50 ) / 2;
+					//cube.position.z = -475;
+ 
+					scene.addObject(cube);
+ 
+				}
+				
+				// Mouse Cube
+				
+				var geometry = new THREE.CubeGeometry( 50, 50, 50 );
+				var material = new THREE.MeshLambertMaterial( { color: 0xffffff,wireframe: true ,shading: THREE.FlatShading} );
+				
+				MouseCube = new THREE.Mesh( geometry, material );
+				
+				scene.addObject(MouseCube);
+				
+				// light 
+				
+				var ambientLight = new THREE.AmbientLight( 0x404040 );
+				scene.addLight( ambientLight );
+ 
+				var directionalLight = new THREE.DirectionalLight( 0xffffff );
+				directionalLight.position.x = 1;
+				directionalLight.position.y = 1;
+				directionalLight.position.z = 0.75;
+				directionalLight.position.normalize();
+				scene.addLight( directionalLight );
+ 
+				var directionalLight = new THREE.DirectionalLight( 0x808080 );
+				directionalLight.position.x = - 1;
+				directionalLight.position.y = 1;
+				directionalLight.position.z = - 0.75;
+				directionalLight.position.normalize();
+				scene.addLight( directionalLight );
+				
+				
+				
+        renderer = new THREE.CanvasRenderer();
+        renderer.setSize( window.innerWidth - 50, window.innerHeight - 100 );
+
+        document.body.appendChild( renderer.domElement );
+        
+        document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+				document.addEventListener( 'mousedown', onDocumentMouseDown, false );
+				document.addEventListener( 'mouseup', onDocumentMouseUp, false );
+				document.addEventListener( 'mousewheel', onDocumentMouseWheel, false );
+    }
+
+    function animate() {
+
+        
+        requestAnimationFrame( animate );
+        render();
+
+    }
+    
+
+    function render() {
+    		
+        renderer.render( scene, camera );
+        
+    }
+    
+    function onDocumentMouseDown(e){
+    	mouseDown = true;
+    	caremamove = false;
+    	
+    	me.save(e.clientX,e.clientY);
+    	
+
+    }
+    
+    function onDocumentMouseMove(e){
+    	
+    	e.preventDefault();
+    	
+    	var cX = e.clientX - me.oldX;
+    	var cY = e.clientY - me.oldY;
+    	
+    	me.save(e.clientX,e.clientY);
+    	caremamove = true;
+    	
+    	if(mouseDown){
+    		
+    		counterX = counterX + cX * 0.005;
+    		counterY = counterY + cY * 0.003;
+    		
+    		
+    		camera.position.x = Math.cos( counterX ) * radious;
+    		camera.position.y = Math.tan( counterY ) * radious;
+				camera.position.z = Math.sin( counterX ) * radious;
+				
+			} else {
+			
+						
+			mouse3D = projector.unprojectVector( new THREE.Vector3( ( event.clientX / renderer.domElement.width ) * 2 - 1, - ( event.clientY / renderer.domElement.height ) * 2 + 1, 0.5 ), camera );
+			ray.direction = mouse3D.subSelf( camera.position ).normalize();
+			
+			var position, intersect, intersects = ray.intersectScene( scene );
+			
+			if ( intersects.length > 0 ) {
+							
+							intersect = intersects[ 0 ].object != MouseCube ? intersects[ 0 ] : intersects[ 1 ];
+							
+							if ( intersect.object.name=="plane" ) {
+								
+								    	MouseCube.position.x = intersect.object.position.x ;
+											MouseCube.position.y = ( MouseCube.scale.y * 50 ) / 2;
+											MouseCube.position.z = intersect.object.position.z;
+							
+							}
+			}
+			
+			}
+			
+			
+			
+    }
+    
+    function onDocumentMouseUp(e){
+    	
+    	var cX = e.clientX - me.oldX;
+    	var cY = e.clientY - me.oldY;
+    	
+    	
+    	mouseDown = false;
+    	
+    	
+    	if(caremamove == false){
+    		
+    			var geometry = new THREE.CubeGeometry( 50, 50, 50 );
+					var material = new THREE.MeshLambertMaterial( { color: 0xffffff,wireframe: false ,shading: THREE.FlatShading} );
+ 
+ 
+					var cube = new THREE.Mesh( geometry, material );
+					cube.overdraw = true;
+    		
+    			cube.position.x = MouseCube.position.x ;
+					cube.position.y = ( cube.scale.y * 50 ) / 2;
+					cube.position.z = MouseCube.position.z;
+ 
+					scene.addObject(cube);
+    		
+    	
+    	}
+    	
+    	me.save(e.clientX,e.clientY);
+    	
+    }
+    
+    function onDocumentMouseWheel( event ) {
+ 
+				radious -= event.wheelDeltaY * 0.5;
+ 
+    		camera.position.x = Math.cos( counterX ) * radious;
+    		camera.position.y = Math.tan( counterY ) * radious;
+				camera.position.z = Math.sin( counterX ) * radious;
+
+ 
+			}
+    
+    
+ 
+
+ 
+</script>
+		
+	</body>
+</html>
