@@ -13,7 +13,8 @@
 		var counterX = 0, counterY=0 ,mouseDown = false;
 		var radious = 500;
 		var MouseCube,projector;
-		var ray, caremamove;
+		var ray, caremamove,ctrldown =false;
+		var deletingObject;
 		
     init();
     animate();
@@ -84,9 +85,9 @@
 				// cube
 				
 				var geometry = new THREE.CubeGeometry( 50, 50, 50 );
-				var material = new THREE.MeshLambertMaterial( { color: 0xffffff,wireframe: false ,shading: THREE.FlatShading} );
+				var material = new THREE.MeshLambertMaterial( { color: 0xffffff,wireframe: true ,shading: THREE.FlatShading} );
  
-				for ( var i = 0; i < 1; i ++ ) {
+				for ( var i = 0; i < 0; i ++ ) {
  
 					var cube = new THREE.Mesh( geometry, material );
 					cube.overdraw = true;
@@ -96,6 +97,7 @@
 					cube.position.x = Math.floor( ( Math.random() * 1000 - 500 ) / 50 ) * 50 + 25;
 					cube.position.y = ( cube.scale.y * 50 ) / 2;
 					cube.position.z = Math.floor( ( Math.random() * 1000 - 500 ) / 50 ) * 50 + 25;
+					cube.name = "cube";
 					
 					//cube.position.x = -475 + (i * 50) ;
 					//cube.position.y = ( cube.scale.y * 50 ) / 2;
@@ -144,6 +146,8 @@
 				document.addEventListener( 'mousedown', onDocumentMouseDown, false );
 				document.addEventListener( 'mouseup', onDocumentMouseUp, false );
 				document.addEventListener( 'mousewheel', onDocumentMouseWheel, false );
+				document.addEventListener( 'keydown', onDocumentKeyDown, false );
+				document.addEventListener( 'keyup', onDocumentKeyUp, false );
     }
 
     function animate() {
@@ -159,6 +163,31 @@
     		
         renderer.render( scene, camera );
         
+    }
+    
+    function onDocumentKeyDown(e){
+    	switch(e.keyCode){
+    		
+    		case 17:
+    			ctrldown = true;
+    			
+    			MouseCube.visible = false;
+    		break;
+    		
+    	}
+    }
+    
+    
+    function onDocumentKeyUp(e){
+    	switch(e.keyCode){
+    		
+    		case 17:
+    			ctrldown = false;
+    			
+    			MouseCube.visible = true;
+    		break;
+    		
+    	}
     }
     
     function onDocumentMouseDown(e){
@@ -200,15 +229,46 @@
 			
 			if ( intersects.length > 0 ) {
 							
-							intersect = intersects[ 0 ].object != MouseCube ? intersects[ 0 ] : intersects[ 1 ];
+						intersect = intersects[ 0 ].object != MouseCube ? intersects[ 0 ] : intersects[ 1 ];
+						if(deletingObject) deletingObject.materials[0].wireframe = false;
 							
-							if ( intersect.object.name=="plane" ) {
+						if(!ctrldown) {
+							
+							switch ( intersect.object.name ) {
+								
+								case "plane":
 								
 								    	MouseCube.position.x = intersect.object.position.x ;
 											MouseCube.position.y = ( MouseCube.scale.y * 50 ) / 2;
 											MouseCube.position.z = intersect.object.position.z;
+											
+											break;
+											
+								case "cube":
+											console.log(intersect.object);
+											MouseCube.position.x = intersect.object.position.x ;
+											MouseCube.position.y = 50 + intersect.object.position.y;
+											MouseCube.position.z = intersect.object.position.z;
 							
 							}
+						} else {
+							
+							switch ( intersect.object.name ) {
+								
+								case "cube":
+											
+											intersect.object.materials[0].wireframe = true;
+											deletingObject = intersect.object;
+											break;
+								
+								case "plane":
+											
+											if(deletingObject) deletingObject.materials[0].wireframe = false;
+											deletingObject = undefined;
+											break;
+							}
+					
+					}
 			}
 			
 			}
@@ -228,6 +288,8 @@
     	
     	if(caremamove == false){
     		
+    		if(!ctrldown){
+    		
     			var geometry = new THREE.CubeGeometry( 50, 50, 50 );
 					var material = new THREE.MeshLambertMaterial( { color: 0xffffff,wireframe: false ,shading: THREE.FlatShading} );
  
@@ -236,10 +298,18 @@
 					cube.overdraw = true;
     		
     			cube.position.x = MouseCube.position.x ;
-					cube.position.y = ( cube.scale.y * 50 ) / 2;
+					cube.position.y = MouseCube.position.y;
 					cube.position.z = MouseCube.position.z;
+					cube.name = "cube";
  
 					scene.addObject(cube);
+				} else {
+					
+					if(deletingObject) {
+						scene.removeObject(deletingObject);
+					}
+				
+				}
     		
     	
     	}
