@@ -1,1 +1,7 @@
-* [Try me](http://rozx.github.com/3DEditor/3DEditor.html)
+* now it support muti-user, everyone can see others' work in realtime.
+
+* Run with Node.js
+
+<script>
+	node app.js
+</script>

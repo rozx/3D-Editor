@@ -1,0 +1,485 @@
+!!! 5
+html
+	head
+		title= title
+		link(rel='stylesheet', href='/stylesheets/style.css')
+		script(type='text/javascript', src='/javascripts/jquery.js')
+		script(type='text/javascript', src='/javascripts/Three.js')
+		script(type='text/javascript', src='/javascripts/RequestAnimationFrame.js')
+	body(style = "background-color:black;align:center")
+	
+	
+		div(style="width:300px;height:300px;border-style:solid;border-width:1px;border-color:white;background-color:black;position:absolute;zIndex:100;left:40%;top:30%;text-align:center;color:white;overflow-y:auto;overflow-x: none;")#MessageDiv
+	
+	
+		script(type="text/javascript")
+		
+			
+		
+			var IDLE = 0, LOGIN = 1, USERID = 2, LOGOUT = 3, SYNCUSER = 4,NEW = 5,DELETE = 6;
+			var STARTSYNCCUBES = 99,ENDSYNCCUBES = 100, syncingcubes = false;
+			
+			var	counterX = 0,	counterY=0 ,mouseDown	=	false;
+			var	radious	=	500;
+			var	MouseCube,projector;
+			var	ray, caremamove,ctrldown =false;
+			var	deletingObject;
+			var MessageDIV;
+			
+			
+			var ws;
+			var userGrounp = {};
+		
+			function User(){
+			
+				this.userID = undefined;
+		
+				this.oldX	=	undefined;
+				this.oldY	=	undefined;
+			
+				this.save	=	function (x,y){
+					this.oldX	=	x;
+					this.oldY	=	y;
+				}
+				
+				this.color = 0xffffff;
+				this.offline = true;
+				
+			}
+		
+			var	me = new User();
+			
+			start();
+			
+			
+			function start(){
+			
+				MessageDIV = document.getElementById("MessageDiv");
+				MessageDIV.innerHTML += "<p>Connecting to the server...</p>";
+				
+			
+				ws = new WebSocket("ws://"+document.domain+":8080/");
+				
+				ws.onopen = function() {
+					
+					
+					var msg = LOGIN;
+					ws.send(msg);
+					
+				};
+				
+				ws.onmessage = function(e) {
+				
+					var msg = e.data;
+					
+					console.log("got message: " + msg);
+	
+	
+					var cmd = msg.split('|');
+					switch (parseInt(cmd[0]))
+					{
+						case USERID:
+							me.userID = parseInt(cmd[1]);
+							
+							MessageDIV.innerHTML	+= "<p>Connected!userID:" + me.userID + "</p>"
+							
+							//document.body.removeChild(MessageDIV);
+							
+							
+							window.onunload = function(){
+							
+								ws.send([LOGOUT,me.userID].join('|'));
+							
+							};
+							
+							initEditor();
+							
+							break;
+						case SYNCUSER:
+							userGrounp[parseInt(cmd[2])] = new User();
+							userGrounp[parseInt(cmd[2])].userID = parseInt(cmd[2]);
+							userGrounp[parseInt(cmd[2])].offline = true;
+							
+						case NEW:
+						
+							var	geometry = new THREE.CubeGeometry( 50, 50, 50	);
+							var	material = new THREE.MeshLambertMaterial(	{	color: cmd[5],wireframe: false ,shading: THREE.FlatShading}	);
+							var	cube = new THREE.Mesh( geometry, material	);
+							cube.overdraw	=	true;
+							cube.position.x	=	parseInt(cmd[2]) ;
+							cube.position.y	=	parseInt(cmd[3]);
+							cube.position.z	=	parseInt(cmd[4]);
+							cube.name	=	"cube";
+							
+							
+							scene.addObject(cube);
+							break;
+						
+						case DELETE:
+							for(var i=0;i<scene.children.length;i++){
+								
+								if(scene.children[i].name == "cube" &&
+										scene.children[i].position.x == parseInt(cmd[2]) && 
+										scene.children[i].position.y == parseInt(cmd[3]) && 
+										scene.children[i].position.z == parseInt(cmd[4])) {
+									
+										scene.removeObject(scene.children[i]);
+									
+							
+								}
+							}
+						
+							break;
+						
+						
+						case STARTSYNCCUBES:
+						
+							MessageDIV.innerHTML += "<p>Recving Data...</p>";
+						
+							syncingcubes = true;
+							
+							break;
+						
+						case ENDSYNCCUBES:
+							
+							
+							MessageDIV.innerHTML += "<p>Start the Editor..</p>";
+							
+							MessageDIV.style.left = "1%";
+							MessageDIV.style.top = "1%";
+							MessageDIV.style.height = "100px";
+							
+							
+							animate();
+							
+							syncingcubes = false;
+							
+							break;
+						
+						
+							
+					}
+				}
+			
+			
+			}
+		
+
+			function initEditor()	{
+			
+				camera = new THREE.Camera( 75, window.innerWidth / window.innerHeight, 1,	10000	);
+				camera.position.x	=	200;
+				camera.position.y	=	200;
+				camera.position.z	=	200;
+			
+				//Grid
+			
+				scene	=	new	THREE.Scene();
+				projector	=	new	THREE.Projector();
+				ray	=	new	THREE.Ray( camera.position,	null );
+
+				var	geometry = new THREE.Geometry();
+				geometry.vertices.push(	new	THREE.Vertex(	new	THREE.Vector3( - 500,	0, 0 ) ) );
+				geometry.vertices.push(	new	THREE.Vertex(	new	THREE.Vector3( 500,	0, 0 ) ) );
+			
+			
+				for	(	var	i	=	0; i <=	20;	i	++ ) {
+
+					var	line = new THREE.Line( geometry, new THREE.LineBasicMaterial(	{	color: 0xffffff, opacity:	0.2	}	)	);
+					line.position.z	=	(	i	*	50 ) - 500;
+					scene.addObject( line	);
+
+					var	line = new THREE.Line( geometry, new THREE.LineBasicMaterial(	{	color: 0xffffff, opacity:	0.2	}	)	);
+					line.position.x	=	(	i	*	50 ) - 500;
+					line.rotation.y	=	90 * Math.PI / 180;
+					scene.addObject( line	);
+
+				}
+			
+			
+				var	material = new THREE.MeshDepthMaterial({ opacity:	0	});
+			
+				for	(var i = 0 ; i < 20; i ++){
+
+					for(var i2 = 0;i2< 20;i2 ++){
+						var	plane	=	new	THREE.Mesh(	new	THREE.CubeGeometry(	50,	50,	0	),material );
+						plane.rotation.x =	-	90 * Math.PI / 180;
+						plane.position.x =-475 + (i	*	50);
+						plane.position.y = 0;
+						plane.position.z = -475	+	(i2	*	50);
+						plane.name = "plane";
+						plane.visible	=	false;
+						scene.addObject( plane );
+					}
+			
+				}
+			
+			
+				// cube
+			
+				var	geometry = new THREE.CubeGeometry( 50, 50, 50	);
+				var	material = new THREE.MeshLambertMaterial(	{	color: 0xffffff,wireframe: true	,shading:	THREE.FlatShading} );
+
+				for	(	var	i	=	0; i < 0;	i	++ ) {
+
+					var	cube = new THREE.Mesh( geometry, material	);
+					cube.overdraw	=	true;
+
+					cube.scale.y = Math.floor( Math.random() * 2 + 1 );
+
+					cube.position.x	=	Math.floor(	(	Math.random()	*	1000 - 500 ) / 50	)	*	50 + 25;
+					cube.position.y	=	(	cube.scale.y * 50	)	/	2;
+					cube.position.z	=	Math.floor(	(	Math.random()	*	1000 - 500 ) / 50	)	*	50 + 25;
+					cube.name	=	"cube";
+				
+					//cube.position.x	=	-475 + (i	*	50)	;
+					//cube.position.y	=	(	cube.scale.y * 50	)	/	2;
+					//cube.position.z	=	-475;
+
+					scene.addObject(cube);
+
+				}
+			
+				// Mouse Cube
+			
+				var	geometry = new THREE.CubeGeometry( 50, 50, 50	);
+				var	material = new THREE.MeshLambertMaterial(	{	color: 0xffffff,wireframe: true	,shading:	THREE.FlatShading} );
+			
+				MouseCube	=	new	THREE.Mesh(	geometry,	material );
+			
+				scene.addObject(MouseCube);
+			
+				// light 
+			
+				var	ambientLight = new THREE.AmbientLight( 0x404040	);
+				scene.addLight(	ambientLight );
+	
+				var	directionalLight = new THREE.DirectionalLight( 0xffffff	);
+				directionalLight.position.x	=	1;
+				directionalLight.position.y	=	1;
+				directionalLight.position.z	=	0.75;
+				directionalLight.position.normalize();
+				scene.addLight(	directionalLight );
+			
+				var	directionalLight = new THREE.DirectionalLight( 0x808080	);
+				directionalLight.position.x	=	-	1;
+				directionalLight.position.y	=	1;
+				directionalLight.position.z	=	-	0.75;
+				directionalLight.position.normalize();
+				scene.addLight(	directionalLight );
+			
+			
+			
+				renderer = new THREE.CanvasRenderer();
+				renderer.setSize(	window.innerWidth	-	50,	window.innerHeight - 100 );
+
+				document.body.appendChild( renderer.domElement );
+				
+				document.addEventListener( 'mousemove',	onDocumentMouseMove, false );
+				document.addEventListener( 'mousedown',	onDocumentMouseDown, false );
+				document.addEventListener( 'mouseup',	onDocumentMouseUp, false );
+				document.addEventListener( 'mousewheel', onDocumentMouseWheel, false );
+				document.addEventListener( 'keydown',	onDocumentKeyDown, false );
+				document.addEventListener( 'keyup',	onDocumentKeyUp, false );
+				
+				console.log(scene);
+			}
+			
+
+			
+		
+			function animate() {
+		
+				requestAnimationFrame( animate );
+				render();
+
+			}
+		
+
+			function render()	{
+				
+					renderer.render( scene,	camera );
+				
+			}
+		
+			function onDocumentKeyDown(e){
+				switch(e.keyCode){
+				
+					case 17:
+						ctrldown = true;
+					
+						MouseCube.visible	=	false;
+					break;
+				
+					default:
+						console.log(e.keyCode);
+					break;
+				
+				}
+			}
+		
+		
+			function onDocumentKeyUp(e){
+				switch(e.keyCode){
+					
+					case 17:
+						ctrldown = false;
+					
+						MouseCube.visible	=	true;
+					break;
+				
+				}
+			}
+		
+			function onDocumentMouseDown(e){
+				mouseDown	=	true;
+				caremamove = false;
+			
+				me.save(e.clientX,e.clientY);
+			
+
+			}
+		
+			function onDocumentMouseMove(e){
+			
+				e.preventDefault();
+			
+				var	cX = e.clientX - me.oldX;
+				var	cY = e.clientY - me.oldY;
+			
+				me.save(e.clientX,e.clientY);
+				caremamove = true;
+			
+				if(mouseDown){
+				
+					counterX = counterX	+	cX * 0.005;
+					counterY = counterY	+	cY * 0.003;
+				
+				
+					camera.position.x	=	Math.cos(	counterX ) * radious;
+					camera.position.y	=	Math.tan(	counterY ) * radious;
+					camera.position.z	=	Math.sin(	counterX ) * radious;
+			
+				}	else {
+		
+					
+					mouse3D	=	projector.unprojectVector( new THREE.Vector3(	(	event.clientX	/	renderer.domElement.width	)	*	2	-	1, - ( event.clientY / renderer.domElement.height	)	*	2	+	1, 0.5 ),	camera );
+					ray.direction	=	mouse3D.subSelf( camera.position ).normalize();
+		
+					var	position,	intersect, intersects	=	ray.intersectScene(	scene	);
+		
+					if ( intersects.length > 0 ) {
+						
+						intersect	=	intersects[	0	].object !=	MouseCube	?	intersects[	0	]	:	intersects[	1	];
+						if(deletingObject) deletingObject.materials[0].wireframe = false;
+						
+							if(!ctrldown)	{
+						
+								switch ( intersect.object.name ) {
+							
+									case "plane":
+							
+										MouseCube.position.x = intersect.object.position.x ;
+										MouseCube.position.y = ( MouseCube.scale.y * 50	)	/	2;
+										MouseCube.position.z = intersect.object.position.z;
+										
+										break;
+										
+									case "cube":
+
+										MouseCube.position.x = intersect.object.position.x ;
+										MouseCube.position.y = 50	+	intersect.object.position.y;
+										MouseCube.position.z = intersect.object.position.z;
+										
+										break;
+						
+								}
+							}	else {
+						
+								switch ( intersect.object.name ) {
+							
+									case "cube":
+										
+										intersect.object.materials[0].wireframe	=	true;
+										deletingObject = intersect.object;
+										break;
+							
+									case "plane":
+										
+										if(deletingObject) deletingObject.materials[0].wireframe = false;
+										deletingObject = undefined;
+										break;
+								}
+				
+						}
+					}
+		
+				}
+		
+		
+		
+			}
+		
+			function onDocumentMouseUp(e){
+			
+				var	cX = e.clientX - me.oldX;
+				var	cY = e.clientY - me.oldY;
+			
+			
+				mouseDown	=	false;
+			
+			
+				if(caremamove	== false){
+				
+					if(!ctrldown){
+				
+						var	geometry = new THREE.CubeGeometry( 50, 50, 50	);
+						var	material = new THREE.MeshLambertMaterial(	{	color: 0xffffff,wireframe: false ,shading: THREE.FlatShading}	);
+						var	cube = new THREE.Mesh( geometry, material	);
+						cube.overdraw	=	true;
+						cube.position.x	=	MouseCube.position.x ;
+						cube.position.y	=	MouseCube.position.y;
+						cube.position.z	=	MouseCube.position.z;
+						cube.name	=	"cube";
+						
+						// Sending Data
+						
+						
+						var msg = [NEW,me.id,cube.position.x,cube.position.y,cube.position.z,me.color].join('|');
+						ws.send(msg);
+						
+						// ==============
+						
+						
+
+						scene.addObject(cube);
+					}	else {
+				
+					if(deletingObject) {
+						scene.removeObject(deletingObject);
+						
+						var msg = [DELETE,me.userID,deletingObject.position.x,deletingObject.position.y,deletingObject.position.z].join('|');
+						ws.send(msg);
+						
+					}
+			
+					}
+				
+			
+			}
+			
+				me.save(e.clientX,e.clientY);
+			
+			}
+		
+			function onDocumentMouseWheel( event ) {
+
+				radious	-= event.wheelDeltaY * 0.5;
+
+				camera.position.x	=	Math.cos(	counterX ) * radious;
+				camera.position.y	=	Math.tan(	counterY ) * radious;
+				camera.position.z	=	Math.sin(	counterX ) * radious;
+
+			}
+		
+		

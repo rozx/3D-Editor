@@ -1,0 +1,690 @@
+!!! 5
+html
+	head
+		title= title
+		link(rel='stylesheet', href='/stylesheets/style.css')
+		script(type='text/javascript', src='/javascripts/jquery.js')
+		script(type="text/javascript")
+		
+			var IDLE = 0, LOGIN = 1, USERID = 2, DRAW = 4, MOUSEMOVE = 5, CHAT = 6, SYNCIMG = 7,
+				CHANGECOLOR = 8, CHANGESHAPE = 16, LOGOUT = 32,
+				STARTDRAWING = 64, SYNCUSER = 128;
+				
+			var FREE = 0,LINE =1, CIRC = 2, RECT = 3; 
+			
+
+			var users = {};
+			
+			var me;
+			var Nickname;
+			var canvas;
+			var ctx;
+			var ol;
+			var ws;
+			var MyBody;
+			var LogArea;
+			
+			var onColorButton;
+			var onShapeButton;
+			
+			var ImgData = undefined;
+			
+			function User(userId) {
+				this.drawing = false;
+				this.Nickname= undefined;
+				this.userId = userId;
+				this.oldX = undefined;
+				this.oldY = undefined;
+				this.color = undefined;
+				this.shape = undefined;
+				this.MouseX = undefined;
+				this.MouseY = undefined;
+				this.MouseImage = undefined;
+				this.MouseNameLayer = undefined;
+				this.Previewing = undefined;
+				
+				this.setMousePos = function(x,y) {
+					this.MouseX = x;
+					this.MouseY = y;
+				}
+				
+				this.setDrawing = function(d) {
+					this.drawing = d;
+				}
+				
+				this.save = function(x, y) {
+					this.oldX = x;
+					this.oldY = y;
+				}
+				
+				this.setColor = function(c) {
+					this.color = c;
+				}
+				
+				this.setShape = function(s) {
+					this.shape = s;
+				}
+				
+				this.setNickname= function(NN){
+					this.Nickname = NN;
+				}
+				
+				
+			}
+			
+			function init() {
+				Nickname = prompt("请输入你的昵称","user");
+				
+				
+				MyBody = document.getElementsByTagName("body")[0];
+				ol = document.getElementById("OnlineUser");
+				document.getElementById("MsgArea").readOnly=true;
+				LogArea = document.getElementById("logArea");
+				LogArea.readOnly = true;
+				
+				canvas = document.getElementById('canvas');
+				ctx = canvas.getContext('2d');	
+				
+				canvas.width = $("#can")[0].clientWidth - 30;
+				canvas.height = $("#can")[0].clientHeight-70;
+				
+				
+				
+				$("#canvas").mousemove(onMouseMove);
+				$("#canvas").mousedown(onMouseDown);
+				$("#canvas").mouseup(onMouseUp);
+				$("#canvas").mouseenter(onMouseEnter);
+				
+				$("#colors button").click(function(e) {
+					me.setColor(e.currentTarget.style.background);
+					broadcastColorChange();
+					
+					
+					if (onColorButton != e.currentTarget) {
+						if (onColorButton ) {
+							onColorButton.className = "toolup";
+						}
+						
+						e.currentTarget.className = "tooldown";
+						onColorButton = e.currentTarget;
+					}
+				});
+				
+				
+				
+				$("#shapes button").click(function(e) {
+					//alert(e.currentTarget.id);
+					
+					e.currentTarget.className = "shapedown";
+					
+					if (onShapeButton != e.currentTarget) {
+						if (onShapeButton) {
+							onShapeButton.className = "shapeup";
+						}
+						
+						e.currentTarget.className = "shapedown";
+						onShapeButton = e.currentTarget;
+					}
+					
+					switch(e.currentTarget.id){
+						case "LineButton":
+						me.setShape(LINE);
+
+						break;
+						
+						case "CircButton":
+						me.setShape(CIRC);
+						break;
+						
+						case "FreeButton":
+						me.setShape(FREE);
+						break;
+						
+						case "RectButton":
+						me.setShape(RECT);
+						break;
+					
+					}
+					
+				});
+				
+				
+				
+				
+				ws = new WebSocket("ws://"+document.domain+":8080/");
+				
+				ws.onopen = function() {
+					var msg = LOGIN + "|" + Nickname;
+					ws.send(msg);
+					
+					
+				};
+				
+				
+				ws.onmessage = function(e) {
+				
+					console.log("got message:" + e.data);
+					var cmd = e.data.split('|');
+					switch (parseInt(cmd[0])) {
+						case LOGIN:
+							var u = new User(cmd[1]);
+							u.setNickname(cmd[2]);
+							users[cmd[1]] = u;
+							console.log("created new user: " + cmd[1]);
+							
+							var NewUserli = document.createElement("li");
+							NewUserli.innerHTML=cmd[2];
+					
+							ol.appendChild(NewUserli);
+							
+							InitMouseCur(cmd[1]);
+							
+							LogArea.value = LogArea.value + cmd[2] + "加入了房间!" + "\\n";
+							
+							LogAreaAutoScroll();
+							
+							break;
+						case USERID:
+							setUserId(cmd[1]);
+							
+							
+							var NewUserli = document.createElement("li");
+							NewUserli.innerHTML=Nickname;
+					
+							ol.appendChild(NewUserli);
+							
+							LogArea.value = LogArea.value + "你" + "加入了房间!" + "\\n";
+							
+							LogAreaAutoScroll();
+							
+							//ImgData = cmd[2];
+							
+							//ctx.putImageData(ImgData, 0, 0);
+							
+							
+							break;
+							
+						case SYNCUSER:
+							var u = new User(cmd[1]);
+							u.save(cmd[3], cmd[4]);
+							u.setColor(cmd[5]);
+							u.setShape(cmd[6]);
+							u.setNickname(cmd[2]);
+							users[cmd[1]] = u;
+							
+							var NewUserli = document.createElement("li");
+							NewUserli.innerHTML=cmd[2];
+							
+							ol.appendChild(NewUserli);
+							
+							InitMouseCur(cmd[1]);
+							
+							LogArea.value = LogArea.value + cmd[2] + "加入了房间!" + "\\n";
+							
+							LogAreaAutoScroll();
+						
+							
+							break;
+						case STARTDRAWING:
+						
+							users[cmd[1]].save(cmd[3], cmd[4]);
+							users[cmd[1]].setMousePos(cmd[3],cmd[4]);
+							users[cmd[1]].setShape(parseInt(cmd[2]));
+
+							LogArea.value = LogArea.value + users[cmd[1]].Nickname + "开始绘画了!" + "\\n";
+							
+							LogAreaAutoScroll();
+							
+							LogArea.value = LogArea.value + users[cmd[1]].Nickname + " drawing "  + users[cmd[1]].shape + "\\n";
+							
+							LogAreaAutoScroll();
+							
+							break;
+						case DRAW:
+						
+							draw(users[cmd[1]],cmd[3],cmd[4]);
+							
+							
+							break;
+							
+							
+						case CHANGECOLOR:
+							users[cmd[1]].setColor(cmd[2]);
+							
+							LogArea.value = LogArea.value + users[cmd[1]].Nickname + "换了一种颜色:" + cmd[2] + "\\n";
+							
+							LogAreaAutoScroll();
+							
+							break;
+						case LOGOUT:
+						
+							ol = document.getElementById("OnlineUser");
+							var t = ol.childNodes.length;
+							var olc = ol.childNodes;
+							
+							for (var i=0;i<t;i++)
+							{
+							
+								if(olc[i].innerHTML == cmd[2]){
+								ol.removeChild(ol.childNodes[i]);
+								break;
+
+								}
+							}
+							
+							var MyBody = document.getElementsByTagName("body")[0];
+							
+							MyBody.removeChild(users[cmd[1]].MouseImage);
+							MyBody.removeChild(users[cmd[1]].MouseNameLayer);
+							
+							LogArea.value = LogArea.value + cmd[2] + "退出了房间" + "\\n";
+							
+							LogAreaAutoScroll();
+							
+							break;
+						case MOUSEMOVE:
+							users[cmd[1]].setMousePos(cmd[3],cmd[4]);
+							
+							users[cmd[1]].MouseImage.style.left = (parseInt(cmd[3]) + canvas.offsetLeft) + "px";
+							users[cmd[1]].MouseImage.style.top = (parseInt(cmd[4]) + canvas.offsetTop) + "px";
+							
+							
+							
+							users[cmd[1]].MouseNameLayer.style.left = (parseInt(cmd[3]) + canvas.offsetLeft + 20)+ "px";
+							users[cmd[1]].MouseNameLayer.style.top = (parseInt(cmd[4]) + canvas.offsetTop)+ "px";
+						
+							break;
+						case CHAT:
+						
+							var TextBox = document.getElementById("MsgArea");
+							
+							TextBox.value =  TextBox.value + cmd[2] + " says: " + cmd[3];
+							
+							TextBox.value = TextBox.value + "\\n";
+							
+							TextBox.scrollTop = TextBox.scrollHeight;
+							
+							users[cmd[1]].MouseNameLayer.innerText = cmd[2] + ":" + cmd[3];
+							
+							break;
+						
+						case SYNCIMG:
+							
+							
+							
+							break;
+							}
+							
+					console.log(e.data);
+				};
+				
+				ws.onclose = function() {
+					ws.send([LOGOUT,me.userId,me.Nickname].join('|'));
+					console.log("websocket closed");
+					
+					alert("Websocket Closed!PLz reconnect!");
+				};
+				
+				
+				function InitMouseCur(uid){
+
+							var NewUserMouseImg = document.createElement("img");
+							var NewUserMouseDiv = document.createElement("div");
+
+				
+							NewUserMouseImg.src="/image/pwsnorm.cur";
+							NewUserMouseImg.style.position ="absolute";
+							NewUserMouseImg.style.zIndex = "99";
+							NewUserMouseImg.style.left = "50%";
+							NewUserMouseImg.style.top = "50%";
+				
+							NewUserMouseImg.id = uid + "MouseIMG"
+				
+							users[uid].MouseImage = NewUserMouseImg;
+							
+				
+							NewUserMouseDiv.style.position ="absolute";
+							NewUserMouseDiv.style.zIndex = "100";
+							
+							NewUserMouseDiv.style.textAlign = "center";
+							NewUserMouseDiv.innerText = users[uid].Nickname;
+							
+							users[uid].MouseNameLayer = NewUserMouseDiv;
+							
+							MyBody.appendChild(NewUserMouseImg);
+							MyBody.appendChild(NewUserMouseDiv);
+				}
+				
+				function LogAreaAutoScroll(){
+			
+				LogArea = document.getElementById("logArea");
+				LogArea.scrollTop = LogArea.scrollHeight;
+				}
+				
+
+				// setup idle message to prevent connection from timeout
+				
+				setInterval("sendIdleMsg()", 5000);
+			}
+			
+			
+			
+			function getXY(e) {
+				var x, y;
+				
+				if (e.pageX != undefined && e.pageY != undefined) {
+					x = e.pageX;
+					y = e.pageY;
+				}
+				else {
+					x = e.clientX + document.body.scrollLeft +
+						document.documentElement.scrollLeft;
+					y = e.clientY + document.body.scrollTop +
+						document.documentElement.scrollTop;
+				}
+				
+				x-=canvas.offsetLeft;
+				y-=canvas.offsetTop;
+				
+				return {x:x, y:y}
+			}
+			
+			
+			function onMouseDown(e) {
+				me.setDrawing(true);
+				
+				if(me.shape != FREE) me.Previewing = true;
+				
+				var p = getXY(e);
+				
+				
+				me.save(p.x, p.y);
+				broadcastStartDrawing();
+			}
+					
+			function onMouseUp(e) {
+
+				
+				if(me.shape != FREE){
+				
+					me.Previewing = false;
+					
+					var p = getXY(e);
+					broadcastDraw(p.x,p.y);
+					
+					draw(me, p.x, p.y);
+				}
+				
+				
+				me.setDrawing(false);
+				
+				console.log("drawing: " +me.drawing);
+			}
+			
+			
+			function onMouseMove(e) {
+			
+				var p = getXY(e);
+				
+				var msg =[MOUSEMOVE, me.userId, Nickname , p.x, p.y].join('|');
+				ws.send(msg);		
+				
+				if(me.Previewing) {
+					Preview(me,p.x,p.y);
+				}
+				
+				if (me.drawing) {
+
+					if(me.shape == FREE){
+					
+						draw(me, p.x, p.y);
+						broadcastDraw(p.x,p.y);
+						
+					}
+				
+				}
+				
+				
+			}
+			
+			function onMouseEnter(e) {
+				//drawing = false;
+				me.setDrawing(false);
+				console.log("mouse enter");
+				
+			}
+			
+			function setUserId(id) {
+				me = new User(id);
+				$("#colors button:last").click();
+				document.getElementById("FreeButton").click();			
+				$("#myId").text("UserID: " + id + "|" + Nickname);
+			}
+			
+			function draw(user,x1,y1) {
+			
+				switch (user.shape){
+					case FREE:
+					
+						ctx.beginPath();
+						ctx.moveTo(user.oldX,user.oldY);
+						ctx.lineTo(x1,y1);
+						ctx.strokeStyle = user.color;
+						ctx.stroke();
+						break;
+						
+					case LINE:
+					
+						ctx.beginPath();
+						ctx.moveTo(user.oldX,user.oldY);
+						ctx.lineTo(x1,y1);
+						ctx.strokeStyle = user.color;
+						ctx.stroke();
+						break;
+						
+					case RECT:
+						ctx.fillStyle=user.color;
+						ctx.fillRect(user.oldX,user.oldY,x1-user.oldX,y1-user.oldY);
+						break;
+					case CIRC:
+						
+						rad = Math.sqrt(Math.pow((user.oldX - x1),2) + Math.pow((user.oldY - y1), 2))
+						
+						ctx.fillStyle=user.color;
+						ctx.beginPath();
+						ctx.arc(user.oldX,user.oldY,rad,0,Math.PI*2,true);
+						ctx.closePath();
+						ctx.fill();
+						break;
+				}
+				
+				ImgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+				
+				
+				//oldX = x1;
+				//oldY = y1;
+				user.save(x1, y1);
+			}
+			
+			
+			function Preview(user,x,y) {
+			
+				if(ImgData) ctx.putImageData(ImgData, 0, 0);  
+			
+				switch (user.shape){
+						
+					case LINE:
+					
+						ctx.beginPath();
+						ctx.moveTo(user.oldX,user.oldY);
+						ctx.lineTo(x,y);
+						ctx.strokeStyle = user.color;
+						ctx.stroke();
+						break;
+						
+					case RECT:
+						ctx.fillStyle=user.color;
+						ctx.fillRect(user.oldX,user.oldY,x-user.oldX,y-user.oldY);
+						break;
+					
+					case CIRC:
+						
+						rad = Math.sqrt(Math.pow((user.oldX - x),2) + Math.pow((user.oldY - y), 2))
+						
+						ctx.fillStyle=user.color;
+						ctx.beginPath();
+						ctx.arc(user.oldX,user.oldY,rad,0,Math.PI*2,true);
+						ctx.closePath();
+						ctx.fill();
+						break;
+				}
+						
+						
+			}
+			
+			function broadcastStartDrawing() {
+				var msg = [STARTDRAWING, me.userId, me.shape , me.oldX, me.oldY].join('|');
+				ws.send(msg);
+			}
+			
+			function broadcastColorChange() {
+				var msg = [CHANGECOLOR, me.userId, me.color].join('|');
+				ws.send(msg);
+			}
+			
+			function broadcastDraw(x1,y1) {
+				var msg = [DRAW, me.userId, me.shape, x1, y1].join('|');
+				ws.send(msg);
+			}
+			
+			function sendIdleMsg() {
+				ws.send(IDLE);
+			}
+			
+		style(type='text/css')
+			canvas { border: 1px solid gray; }
+			table { border: 1px solid gray }
+			table { border-collapse:collapse; }
+			td { width: 32px; }
+			tr { height: 32px; }
+			button.toolup { 
+				width: 28px; 
+				height:28px; 
+				border:1px outset;			
+			}
+
+			button.tooldown {
+				width: 28px; 
+				height:28px; 
+				border:1px inset;			
+			}
+			
+			button.shapeup{
+			
+			width: 32px; 
+			height:32px; 
+			border:1px outset;		
+			background-color:white;
+			
+			}
+			
+			button.shapedown{
+			
+			width: 32px; 
+			height:32px; 
+			border:1px inset;	
+			background-color:grey;
+			
+			}
+			
+			
+			
+	body()
+		script
+			window.onload = init;
+			window.onunload = onLogout;
+			
+			function onLogout(){
+				ws.send([LOGOUT,me.userId,Nickname].join('|'));
+				console.log("logout~");
+			}
+
+
+			
+			function clearCanvas() {
+				console.log('clearing canvas');
+				canvas.width = canvas.width
+			}
+			
+			function sendMessage(){
+				var MsgBox = document.getElementById("MsgBox");
+				var TextArea = document.getElementById("MsgArea");
+				var msg =[CHAT,me.userId,Nickname,MsgBox.value].join('|');
+				
+				TextArea.value = TextArea.value + Nickname + " says: " + MsgBox.value;
+				TextArea.value = TextArea.value + "\\n";
+				TextArea.scrollTop = TextArea.scrollHeight;
+				
+				MsgBox.value = "";
+				
+				ws.send(msg);
+			}
+		
+		div(style="width:100%")
+			div
+				h1= title
+				p 点击、按住鼠标左键，在画布上移动可以画线。
+				p 打开新的浏览器，可以看到不同用户画的线条同时出现。
+				#myId
+				br
+			div(style="float:left; width:5%;")
+				table#shapes
+					tr
+						td(colspan=2, align="center", style="border: 1px solid gray;background-color:rgb(220,225,245);") 形状
+					tr
+						td 
+							button#LineButton(class="shapeup" , style="background-image:url(./image/line.ICO);")
+						td 
+							button#FreeButton(class="shapeup" , style="background-image:url(./image/freehand.ICO);")
+					tr
+						td 
+							button#RectButton(class="shapeup" , style="background-image:url(./image/rectangle.ICO);")
+						td 
+							button#CircButton(class="shapeup" , style="background-image:url(./image/circle.ICO);")
+				br
+				br
+				table#colors(style="background-color:rgb(220,225,245)")
+					tr
+						td(colspan=2, align="center", style="border: 1px solid gray") 颜色
+					tr
+						td 
+							button(class="toolup", style="background-color:white;")
+						td 
+							button(class="toolup", style="background-color:red;")
+					tr
+						td
+							button(class="toolup", style="background-color:blue;")
+						td
+							button(class="toolup", style="background-color:yellow;")
+					tr
+						td
+							button(class="toolup", style="background-color:brown;")
+						td
+							button(class="toolup", style="background-color:black;")
+							
+			div#can(style="float:left; width:80%; height:550px")
+				canvas#canvas
+				br
+				Textarea#MsgArea(style="width:97.8%;height:200px")
+				br
+				input#MsgBox(style="width:60%",onkeydown="if(event.keyCode==13) sendMessage()")
+				button(onclick="sendMessage();") SendMessage
+				button(onclick="clearCanvas();") Reset Canvas
+			div#others(style="float:left; width:8%; height:550px")
+				Textarea#logArea(style="width:180px;height:300px;border:dotted;padding:5px")
+				div(style="border:dotted;padding:5px;width:180px;height:200px;text-align:center")
+					h1 在线用户
+					ul#OnlineUser
+					br
+				
+				
