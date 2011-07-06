@@ -243,7 +243,7 @@ html
 				// Mouse Cube
 			
 				var	geometry = new THREE.CubeGeometry( 50, 50, 50	);
-				var	material = new THREE.MeshLambertMaterial(	{	color: 0xffffff,wireframe: true	,shading:	THREE.FlatShading} );
+				var	material = new THREE.MeshLambertMaterial(	{	color: me.color,wireframe: true	,shading:	THREE.FlatShading} );
 			
 				MouseCube	=	new	THREE.Mesh(	geometry,	material );
 			
@@ -310,7 +310,120 @@ html
 					
 						MouseCube.visible	=	false;
 					break;
-				
+					
+					case 48:
+						me.color = 0xffffff;
+						
+						var	material = new THREE.MeshLambertMaterial(	{	color: me.color ,wireframe: true ,shading: THREE.FlatShading}	);
+						
+						MouseCube.materials[0] = material ;
+						
+						console.log(MouseCube.materials[0]);
+					break;
+					
+					case 49:
+						me.color = 0xff0000;
+						
+						var	material = new THREE.MeshLambertMaterial(	{	color: me.color ,wireframe: true ,shading: THREE.FlatShading}	);
+						
+						MouseCube.materials[0] = material ;
+					break;
+					
+					case 50:
+						me.color = 0xff00ff;
+						
+						var	material = new THREE.MeshLambertMaterial(	{	color: me.color ,wireframe: true ,shading: THREE.FlatShading}	);
+						
+						MouseCube.materials[0] = material ;
+					break;
+					
+					case 51:
+						me.color = 0x0000ff;
+						
+						var	material = new THREE.MeshLambertMaterial(	{	color: me.color ,wireframe: true ,shading: THREE.FlatShading}	);
+						
+						MouseCube.materials[0] = material ;
+					break;
+
+
+					case 52:
+						me.color = 0x00ffff;
+						
+						var	material = new THREE.MeshLambertMaterial(	{	color: me.color ,wireframe: true ,shading: THREE.FlatShading}	);
+						
+						MouseCube.materials[0] = material ;
+					break;
+
+
+					case 53:
+						me.color = 0x00ff00;
+						
+						var	material = new THREE.MeshLambertMaterial(	{	color: me.color ,wireframe: true ,shading: THREE.FlatShading}	);
+						
+						MouseCube.materials[0] = material ;
+					break;
+					
+
+					case 54:
+						me.color = 0xffa200;
+						
+						var	material = new THREE.MeshLambertMaterial(	{	color: me.color ,wireframe: true ,shading: THREE.FlatShading}	);
+						
+						MouseCube.materials[0] = material ;
+					break;
+
+
+					case 55:
+						me.color = 0xd79efb;
+						
+						var	material = new THREE.MeshLambertMaterial(	{	color: me.color ,wireframe: true ,shading: THREE.FlatShading}	);
+						
+						MouseCube.materials[0] = material ;
+					break;
+
+
+					case 56:
+						me.color = 0x47cfcb;
+						
+						var	material = new THREE.MeshLambertMaterial(	{	color: me.color ,wireframe: true ,shading: THREE.FlatShading}	);
+						
+						MouseCube.materials[0] = material ;
+					break;
+
+
+					case 57:
+						me.color = 0xa0754e;
+						
+						var	material = new THREE.MeshLambertMaterial(	{	color: me.color ,wireframe: true ,shading: THREE.FlatShading}	);
+						
+						MouseCube.materials[0] = material ;
+						
+					break;
+
+
+					case 58:
+					
+						me.color = 0xdf53b4;
+						
+						var	material = new THREE.MeshLambertMaterial(	{	color: me.color ,wireframe: true ,shading: THREE.FlatShading}	);
+						
+						MouseCube.materials[0] = material ;
+						
+					break;
+
+					case 189:
+					
+						var color = prompt("Enter the color code in hex", 0xdf53b4);
+						
+						me.color = parseInt(color);
+						
+						var	material = new THREE.MeshLambertMaterial(	{	color: me.color ,wireframe: true ,shading: THREE.FlatShading}	);
+						
+						MouseCube.materials[0] = material ;
+						
+					break;
+					
+									
 					default:
 						console.log(e.keyCode);
 					break;
@@ -434,18 +547,19 @@ html
 					if(!ctrldown){
 				
 						var	geometry = new THREE.CubeGeometry( 50, 50, 50	);
-						var	material = new THREE.MeshLambertMaterial(	{	color: 0xffffff,wireframe: false ,shading: THREE.FlatShading}	);
+						var	material = new THREE.MeshLambertMaterial(	{	color: MouseCube.materials[0].color.hex,wireframe: false ,shading: THREE.FlatShading}	);
 						var	cube = new THREE.Mesh( geometry, material	);
 						cube.overdraw	=	true;
 						cube.position.x	=	MouseCube.position.x ;
 						cube.position.y	=	MouseCube.position.y;
 						cube.position.z	=	MouseCube.position.z;
+
 						cube.name	=	"cube";
 						
 						// Sending Data
 						
 						
-						var msg = [NEW,me.id,cube.position.x,cube.position.y,cube.position.z,me.color].join('|');
+						var msg = [NEW,me.id,cube.position.x,cube.position.y,cube.position.z,MouseCube.materials[0].color.hex].join('|');
 						ws.send(msg);
 						
 						// ==============

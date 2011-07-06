@@ -2,6 +2,10 @@
 
 * Run with Node.js
 
-<script>
-	node app.js
-</script>
+	<script>
+		node app.js
+	</script>
+
+* then type http://localhost:3000/ in the browser.
+
+

@@ -175,8 +175,11 @@ function onLogin(con) {
 	
 	for (var i= 0;i<Cubes.length;i++){
 		
-		var str = [NEW,id,Cubes[i].x,Cubes[i].y,Cubes[i].z,Cubes[i].color].join('|');
-		con.send(str);
+		if(Cubes[i]){
+		
+			var str = [NEW,id,Cubes[i].x,Cubes[i].y,Cubes[i].z,Cubes[i].color].join('|');
+			con.send(str);
+		}
 		
 	}
 	
