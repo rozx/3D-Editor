@@ -138,7 +138,7 @@ function wsOnMessage(con, msg) {
 function onLogin(con) {
 	
 	for(var id = 0;id<99;id++){
-		if(!userGrounp[id] || userGrounp[id].Offline == true){
+		if(!userGrounp[id] || userGrounp[id].offline == true){
 			
 			break;
 		}
@@ -149,6 +149,7 @@ function onLogin(con) {
 	
 	var LoginUser = new User();
 	LoginUser.userID = id;
+	LoginUser.offline = false;
 	
 	userGrounp[id] = LoginUser;
 	
@@ -161,7 +162,7 @@ function onLogin(con) {
 	
 	// synchronize other clients that joined before this connection
 	for (var k in userGrounp) {
-		if (k != id && userGrounp.hasOwnProperty(k) && userGrounp[k].offline==false) {
+		if (k != id && userGrounp.hasOwnProperty(k) && userGrounp[k].offline == false) {
 			var u = userGrounp[k];
 			var msg = [SYNCUSER, u.userID].join('|');
 			con.send(msg);

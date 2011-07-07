@@ -55,7 +55,7 @@ html
 			function start(){
 			
 				MessageDIV = document.getElementById("MessageDiv");
-				MessageDIV.innerHTML += "<p>Connecting to the server...</p>";
+				MessageDIV.innerHTML = "<p>Connecting to the server...</p>" + MessageDIV.innerHTML;
 				
 			
 				ws = new WebSocket("ws://"+document.domain+":8080/");
@@ -81,7 +81,7 @@ html
 						case USERID:
 							me.userID = parseInt(cmd[1]);
 							
-							MessageDIV.innerHTML	+= "<p>Connected!userID:" + me.userID + "</p>"
+							MessageDIV.innerHTML	= "<p>Connected!userID:" + me.userID + "</p>" + MessageDIV.innerHTML;
 							
 							//document.body.removeChild(MessageDIV);
 							
@@ -134,7 +134,7 @@ html
 						
 						case STARTSYNCCUBES:
 						
-							MessageDIV.innerHTML += "<p>Recving Data...</p>";
+							MessageDIV.innerHTML = "<p>Recving Data...</p>" + MessageDIV.innerHTML;
 						
 							syncingcubes = true;
 							
@@ -143,7 +143,7 @@ html
 						case ENDSYNCCUBES:
 							
 							
-							MessageDIV.innerHTML += "<p>Start the Editor..</p>";
+							MessageDIV.innerHTML = "<p>Start the Editor..</p>" + MessageDIV.innerHTML;
 							
 							MessageDIV.style.left = "1%";
 							MessageDIV.style.top = "1%";
@@ -160,6 +160,16 @@ html
 							
 					}
 				}
+				
+				ws.onclose = function(){
+				
+					MessageDIV.innerHTML = "<p>Connection lost!</p>" + MessageDIV.innerHTML;
+					
+					MessageDIV.style.left = "40%";
+					MessageDIV.style.top = "30%";
+					MessageDIV.style.height = "300px";
+				
+				};
 			
 			
 			}
@@ -419,7 +429,7 @@ html
 						
 						var	material = new THREE.MeshLambertMaterial(	{	color: me.color ,wireframe: true ,shading: THREE.FlatShading}	);
 						
-						MouseCube.materials[0] = material ;
+						MouseCube.materials[0] = material;
 						
 					break;
 					
@@ -559,7 +569,7 @@ html
 						// Sending Data
 						
 						
-						var msg = [NEW,me.id,cube.position.x,cube.position.y,cube.position.z,MouseCube.materials[0].color.hex].join('|');
+						var msg = [NEW,me.userID,cube.position.x,cube.position.y,cube.position.z,MouseCube.materials[0].color.hex].join('|');
 						ws.send(msg);
 						
 						// ==============
